@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    /* 基础配置 */
+    "target": "ES2022", // 编译目标版本，ES2022支持现代浏览器和Node.js 16+
+    "useDefineForClassFields": true, // 使用标准的类字段定义语义（推荐开启）
+    "module": "ESNext", // 模块系统，ESNext支持最新的ES模块语法
+    "lib": ["ES2022", "DOM", "DOM.Iterable"], // 包含的类型库，支持ES2022和浏览器DOM API
+    "types": ["vite/client"], // 额外包含的类型定义，vite/client提供Vite特定类型
+
+    /* 模块解析 */
+    "moduleResolution": "bundler", // 模块解析策略，bundler适用于现代打包工具（如vite）
+
+    /* 类型声明文件生成 */
+    "declaration": true, // 生成.d.ts类型声明文件（库项目必需）
+    "declarationMap": true, // 生成声明文件的source map，便于调试
+    "outDir": "dist", // 输出目录
+
+    /* 路径映射 */
+    "baseUrl": ".", // 基础路径，用于解析相对路径
+    "paths": {
+      "@/*": ["src/*"] // @/* 映射到 src/* 目录
+    },
+
+    /* 类型检查（推荐严格模式） */
+    "strict": true, // 启用所有严格类型检查选项
+    "skipLibCheck": true, // 跳过库文件类型检查，提升编译速度
+    "esModuleInterop": true // 启用ES模块互操作性，兼容CommonJS模块
+  },
+
+  /* 包含/排除不需要 编译的文件 */
+  "include": ["src"], // 包含的文件/目录，只编译src目录下的文件
+  "exclude": [
+    "node_modules", // 排除依赖包
+    "dist", // 排除构建输出
+    "**/*.test.ts" // 排除测试文件
+  ]
+}

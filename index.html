@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sse-stream-parser</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .demo-section {
+      margin-bottom: 30px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+    .demo-section h3 {
+      margin-top: 0;
+      color: #333;
+    }
+
+    button {
+      background: #007cba;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      background: #005a87;
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .output {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .status {
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .status.running {
+      background: #d4edda;
+      color: #155724;
+    }
+
+    .status.stopped {
+      background: #f8d7da;
+      color: #721c24;
+    }
+
+    .status.completed {
+      background: #d1ecf1;
+      color: #0c5460;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>SSE Stream 使用示例</h1>
+
+    <div class="demo-section">
+      <h3>示例 1: 异步迭代器 (for await...of)</h3>
+      <button id="demo1-start">开始流式处理</button>
+      <button id="demo1-stop" disabled>停止</button>
+      <div>状态: <span id="demo1-status" class="status">待开始</span></div>
+      <div class="output" id="demo1-output">等待开始...</div>
+    </div>
+
+    <div class="demo-section">
+      <h3>示例 2: 订阅模式 (subscribe)</h3>
+      <button id="demo2-start">开始订阅</button>
+      <button id="demo2-stop" disabled>取消订阅</button>
+      <div>状态: <span id="demo2-status" class="status">待开始</span></div>
+      <div class="output" id="demo2-output">等待开始...</div>
+    </div>
+
+    <div class="demo-section">
+      <h3>示例 3: 自定义转换流</h3>
+      <button id="demo3-start">开始自定义处理</button>
+      <button id="demo3-stop" disabled>停止</button>
+      <div>状态: <span id="demo3-status" class="status">待开始</span></div>
+      <div class="output" id="demo3-output">等待开始...</div>
+    </div>
+  </div>
+
+  <script type="module">
+    import SseStreamParser from '/src/index.ts';
+
+
+    // Mock 数据生成函数
+    const streamChunks = ['《静夜思》', '唐·李白', '床前明月光', '疑是地上霜', '举头望明月', '低头思故乡'];
+    function mockGetReadableStream() {
+      const sseChunks = [];
+
+      for (let i = 0; i < streamChunks.length; i++) {
+        const sseEventPart = `event: message\ndata: {"id":"${i}","content":"${streamChunks[i]}"}\n\n`;
+        sseChunks.push(sseEventPart);
+      }
+
+      return new ReadableStream({
+        async start(controller) {
+          for (const chunk of sseChunks) {
+            await new Promise((resolve) => setTimeout(resolve, 300)); // 500ms 延迟，便于观察
+            controller.enqueue(new TextEncoder().encode(chunk));
+          }
+          controller.close();
+        },
+      });
+    }
+
+    // 工具函数
+    function updateOutput(elementId, content, append = true) {
+      const element = document.getElementById(elementId);
+      if (append) {
+        element.textContent += content + '\n';
+      } else {
+        element.textContent = content;
+      }
+      element.scrollTop = element.scrollHeight;
+    }
+
+    function updateStatus(elementId, status, text) {
+      const element = document.getElementById(elementId);
+      element.className = `status ${status}`;
+      element.textContent = text;
+    }
+
+    function setButtonState(startId, stopId, isRunning) {
+      document.getElementById(startId).disabled = isRunning;
+      document.getElementById(stopId).disabled = !isRunning;
+    }
+
+    // 示例 1: 异步迭代器
+    let demo1Controller = null;
+    document.getElementById('demo1-start').addEventListener('click', async () => {
+      setButtonState('demo1-start', 'demo1-stop', true);
+      updateStatus('demo1-status', 'running', '运行中...');
+      updateOutput('demo1-output', '开始处理 SSE 流...', false);
+
+      try {
+        const readableStream = mockGetReadableStream();
+        const stream = SseStreamParser({ readableStream });
+
+        // 使用 AbortController 来控制停止
+        demo1Controller = new AbortController();
+
+        updateOutput('demo1-output', '创建 SSE 流成功，开始迭代...');
+
+        for await (const event of stream) {
+          if (demo1Controller.signal.aborted) break;
+          if (event.data) {
+            event.data = JSON.parse(event.data);
+          }
+          updateOutput('demo1-output', `收到事件: ${JSON.stringify(event)}`);
+        }
+
+        if (!demo1Controller.signal.aborted) {
+          updateStatus('demo1-status', 'completed', '已完成');
+          updateOutput('demo1-output', '流处理完成！');
+        }
+      } catch (error) {
+        updateStatus('demo1-status', 'stopped', '出错');
+        updateOutput('demo1-output', `错误: ${error.message}`);
+      } finally {
+        setButtonState('demo1-start', 'demo1-stop', false);
+      }
+    });
+
+    document.getElementById('demo1-stop').addEventListener('click', () => {
+      if (demo1Controller) {
+        demo1Controller.abort();
+        updateStatus('demo1-status', 'stopped', '已停止');
+        updateOutput('demo1-output', '用户手动停止');
+        setButtonState('demo1-start', 'demo1-stop', false);
+      }
+    });
+
+    // 示例 2: 订阅模式
+    let demo2Unsubscribe = null;
+    document.getElementById('demo2-start').addEventListener('click', async () => {
+      setButtonState('demo2-start', 'demo2-stop', true);
+      updateStatus('demo2-status', 'running', '订阅中...');
+      updateOutput('demo2-output', '开始订阅 SSE 流...', false);
+
+      try {
+        const readableStream = mockGetReadableStream();
+        const stream = SseStreamParser({ readableStream });
+
+        updateOutput('demo2-output', '创建 SSE 流成功，开始订阅...');
+
+        demo2Unsubscribe = stream.subscribe(
+          (event) => {
+            if (event.data) {
+              event.data = JSON.parse(event.data);
+            }
+            updateOutput('demo2-output', `订阅收到: ${JSON.stringify(event)}`);
+          },
+          () => {
+            updateStatus('demo2-status', 'completed', '已完成');
+            updateOutput('demo2-output', '订阅完成！');
+            setButtonState('demo2-start', 'demo2-stop', false);
+            demo2Unsubscribe = null;
+          }
+        );
+      } catch (error) {
+        updateStatus('demo2-status', 'stopped', '出错');
+        updateOutput('demo2-output', `错误: ${error.message}`);
+        setButtonState('demo2-start', 'demo2-stop', false);
+      }
+    });
+
+    document.getElementById('demo2-stop').addEventListener('click', () => {
+      if (demo2Unsubscribe) {
+        demo2Unsubscribe();
+        demo2Unsubscribe = null;
+        updateStatus('demo2-status', 'stopped', '已取消');
+        updateOutput('demo2-output', '订阅已取消');
+        setButtonState('demo2-start', 'demo2-stop', false);
+      }
+    });
+
+    // 示例 3: 自定义转换流
+    let demo3Controller = null;
+    document.getElementById('demo3-start').addEventListener('click', async () => {
+      setButtonState('demo3-start', 'demo3-stop', true);
+      updateStatus('demo3-status', 'running', '运行中...');
+      updateOutput('demo3-output', '开始自定义转换处理...', false);
+
+      try {
+        const readableStream = mockGetReadableStream();
+
+        // 自定义转换流：添加时间戳和处理标记
+        const customTransform = new TransformStream({
+          transform(chunk, controller) {
+            try {
+              // 解析 SSE 格式
+
+
+              const lines = chunk.split('\n').filter(line => line.trim());
+              const event = {};
+
+              for (const line of lines) {
+                if (line.includes(':')) {
+                  const [key, ...valueParts] = line.split(':');
+                  const value = valueParts.join(':').trim();
+                  if (key.trim() && value) {
+                    event[key.trim()] = value;
+                  }
+                }
+              }
+
+              if (event.data) {
+                try {
+                  const parsedData = JSON.parse(event.data);
+                  // 自定义转换：添加时间戳和处理标记
+                  const transformedData = { ...parsedData, event: event.event || 'unknown' };
+                  controller.enqueue(transformedData);
+                } catch (e) {
+                  // 如果不是 JSON，直接传递
+                  controller.enqueue({ rawData: event.data, event: event.event || 'unknown' });
+                }
+              }
+            } catch (error) {
+              console.error('转换错误:', error);
+            }
+          }
+        });
+
+        const stream = SseStreamParser({
+          readableStream,
+          transformStream: customTransform
+        });
+
+        demo3Controller = new AbortController();
+        updateOutput('demo3-output', '创建自定义转换流成功，开始处理...');
+
+        for await (const transformedData of stream) {
+          if (demo3Controller.signal.aborted) break;
+
+          updateOutput('demo3-output', `转换后数据: ${JSON.stringify(transformedData)}`);
+        }
+
+        if (!demo3Controller.signal.aborted) {
+          updateStatus('demo3-status', 'completed', '已完成');
+          updateOutput('demo3-output', '自定义转换处理完成！');
+        }
+      } catch (error) {
+        updateStatus('demo3-status', 'stopped', '出错');
+        updateOutput('demo3-output', `错误: ${error.message}`);
+      } finally {
+        setButtonState('demo3-start', 'demo3-stop', false);
+      }
+    });
+
+    document.getElementById('demo3-stop').addEventListener('click', () => {
+      if (demo3Controller) {
+        demo3Controller.abort();
+        updateStatus('demo3-status', 'stopped', '已停止');
+        updateOutput('demo3-output', '用户手动停止');
+        setButtonState('demo3-start', 'demo3-stop', false);
+      }
+    });
+  </script>
+</body>
+
+</html>
