@@ -5,6 +5,15 @@
 
 一个用于处理 Server-Sent Events (SSE) 流数据的 TypeScript 库，支持将 SSE 协议的 ReadableStream 转换为结构化数据，并提供灵活的流处理能力。
 
+## 🎯 在线演示
+
+**[🚀 点击查看在线演示](https://binzizai.github.io/sse-stream-parser/)**
+
+在线演示包含了三个完整的使用示例：
+- 异步迭代器模式 (`for await...of`)
+- 订阅模式 (`subscribe`)
+- 自定义转换流处理
+
 ## ✨ 特性
 
 - 🚀 **TypeScript 原生支持** - 完整的类型定义和类型安全

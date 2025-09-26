@@ -83,16 +83,29 @@
       color: #721c24;
     }
 
-    .status.completed {
-      background: #d1ecf1;
-      color: #0c5460;
+    a {
+      color: #007cba;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    p {
+      margin: 10px 0;
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h1>SSE Stream 使用示例</h1>
+    <h1>SSE Stream Parser 在线演示</h1>
+    <p>这是一个用于处理 Server-Sent Events (SSE) 流数据的 TypeScript 库的在线演示。</p>
+    <p>
+      <a href="https://github.com/BinZizai/sse-stream-parser" target="_blank">📦 GitHub 仓库</a> | 
+      <a href="https://www.npmjs.com/package/sse-stream-parser" target="_blank">📦 NPM 包</a>
+    </p>
 
     <div class="demo-section">
       <h3>示例 1: 异步迭代器 (for await...of)</h3>
@@ -120,7 +133,7 @@
   </div>
 
   <script type="module">
-    import SseStreamParser from '/src/index.ts';
+      import SseStreamParser from './src/index.ts';
 
 
     // Mock 数据生成函数
