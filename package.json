@@ -21,6 +21,7 @@
     "build": "tsc && vite build",
     "build:demo": "vite build --config vite.config.demo.ts",
     "preview": "vite preview",
+    "preview-demo": "npm run build:demo && vite preview --config vite.config.demo.ts",
     "prepublishOnly": "npm run build",
     "format": "prettier --write .",
     "test": "echo \"No tests specified\" && exit 0",
